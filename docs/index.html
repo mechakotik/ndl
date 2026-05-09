@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NDL Language</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <main class="container">
+        <h1>NDL Language</h1>
+        <p>
+            NDL (nested data language) is a data serialization and config language for representing
+            nested structures.
+        </p>
+
+        <pre><code><span class="comment">// line comment
+/* block comment /* with nesting */ */</span>
+
+<span class="key">scene</span> {
+    <span class="key">size</span> { <span class="key">x</span> <span class="value">1920</span> <span class="key">y</span> <span class="value">1080</span> }
+    <span class="key">camera.type</span> <span class="string">"orthographic"</span>
+    <span class="key">layers</span> [ {
+        <span class="key">name</span> <span class="string">"background"</span>
+        <span class="key">textures</span> [ <span class="string">`background.png` `mask.png`</span> ]
+        <span class="key">scale</span> { <span class="key">x</span> <span class="value">1.2</span> <span class="key">y</span> <span class="value">1.0</span> }
+    } {
+        <span class="key">name</span> <span class="string">"foreground"</span>
+        <span class="key">enabled</span> <span class="bool">false</span>
+    } ]
+}
+</code></pre>
+
+        <h2>Design principles</h2>
+        <ul>
+            <li>Minimal syntax, no elements that can be removed without changing semantics</li>
+            <li>Sane set of primitive types, that maps well to common programming languages</li>
+            <li>Orthogonal grammar, that makes it easy to tell a type of any token without looking
+                at the context</li>
+            <li>Keep documents with deep nesting levels well readable and editable by hand</li>
+            <li>Unambiguous representation of paths to values, that allows for easy access
+                to arbitrary data</li>
+        </ul>
+
+        <h2>Specification</h2>
+        <p>
+            Keys are arbitrary strings, that are represented either:
+        </p>
+        <ul>
+            <li>as is, if the key fully matches <code class="inline-code">[a-zA-Z_][a-zA-Z0-9_-]*</code>
+                and is not one of reserved keywords <code class="inline-code">null</code>,
+                <code class="inline-code">true</code>, <code class="inline-code">false</code>,
+                <code class="inline-code">inf</code>, <code class="inline-code">nan</code></li>
+            <li>in single quotes <code class="inline-code">''</code> in any other case, the contents
+                of a quoted key use the same escape rules as interpreted string values (see below)</li>
+        </ul>
+        <p>
+            There are following types of values:
+        </p>
+        <ul>
+            <li>map - a sequence of key-value pairs, enclosed in <code class="inline-code">{}</code> brackets,
+                separated by whitespace</li>
+            <li>array - a sequence of values, enclosed in <code class="inline-code">[]</code> brackets,
+                separated by whitespace</li>
+            <li>
+                string - a sequence of UTF-8 characters, may be written in 2 forms:
+                <ul>
+                    <li>raw string - enclosed in back quotes <code class="inline-code">``</code>,
+                        can contain any character except <code class="inline-code">`</code>, characters
+                        are written as is</li>
+                    <li>interpreted string - enclosed in double quotes <code class="inline-code">""</code>,
+                        escape sequences
+                        <code class="inline-code">\n</code>,
+                        <code class="inline-code">\t</code>,
+                        <code class="inline-code">\u{...}</code>,
+                        <code class="inline-code">\'</code>,
+                        <code class="inline-code">\"</code>,
+                        <code class="inline-code">\\</code>
+                        are supported, may be multiline, physical newlines are preserved</li>
+                </ul>
+            </li>
+            <li>int - arbitrary size integer, written in either:
+                <ul>
+                    <li>decimal format, fully matching <code class="inline-code">-?(0|[1-9][0-9]*)</code>
+                        (e.g. <code class="inline-code"><span class="value">12</span></code>,
+                        <code class="inline-code"><span class="value">0</span></code>, but not
+                        <code class="inline-code"><span class="value">01</span></code>)</li>
+                    <li>hexadecimal format, fully matching <code class="inline-code">-?0x[0-9A-Fa-f]+</code>
+                        (e.g. <code class="inline-code"><span class="value">0xFF</span></code>)</li>
+                    <li>binary format, fully matching <code class="inline-code">-?0b[01]+</code>
+                        (e.g. <code class="inline-code"><span class="value">0b1011</span></code>)</li>
+                </ul>
+            </li>
+            <li>real - real number, either:
+                <ul>
+                    <li>decimal dot real, fully matching <code class="inline-code">-?(0|[1-9][0-9]*)\.[0-9]+</code>
+                        (e.g. <code class="inline-code"><span class="value">12.3</span></code>,
+                         <code class="inline-code"><span class="value">-0.1</span></code>, but not
+                        <code class="inline-code"><span class="value">01.2</span></code>)</li>
+                    <li>in e notation, fully matching <code class="inline-code">-?(0|[1-9][0-9]*)(\.[0-9]+)?[eE]-?[0-9]+</code>
+                        (e.g. <code class="inline-code"><span class="value">1.2e-3</span></code>,
+                        <code class="inline-code"><span class="value">1e-9</span></code>)</li>
+                    <li>inf, -inf, nan (-nan is invalid)</li>
+                </ul>
+            </li>
+            <li>bool - <code class="inline-code"><span class="bool">true</span></code> or <code class="inline-code">
+                <span class="bool">false</span></code></li>
+            <li>null type - <code class="inline-code"><span class="bool">null</span></code></li>
+        </ul>
+        <p>
+            Document contains exactly one value of any type. If a type is a map, <code class="inline-code">{}</code>
+            brackets must be omitted. Empty (or comment-only) document is an empty map. NDL document file extension
+            is <code class="inline-code">.ndl</code>.
+        </p>
+        <p>
+            A key in the map may be written as dot-separated path, e.g. <code class="inline-code">k1.k2.kN</code>.
+            In this case, nested maps are created for each path level, e.g. <code class="inline-code">k1 {}</code>,
+            <code class="inline-code">k1 { k2 {} }</code>, etc. Let's call declarations of all the nested keys
+            except the last one <i>implicit declarations</i>, and the last one - <i>explicit declaration</i>.
+        </p>
+        <p>
+            There must be at most one explicit declaration of any key. If a key has implicit declarations, its value
+            type must be a map. If a map has implicit declarations, their contents and explicit declaration contents
+            are merged into a single map.
+        </p>
+        <pre><code><span class="comment">// speaking less formally, this is allowed</span>
+<span class="key">category.sub1</span> { <span class="key">key1</span> <span class="string">"val1"</span> <span class="key">key2</span> <span class="string">"val2"</span> }
+<span class="key">category.sub2</span> { <span class="key">key1</span> <span class="string">"val1"</span> <span class="key">key2</span> <span class="string">"val2"</span> }
+<span class="key">category</span> { <span class="key">key</span> <span class="string">"val"</span> }
+
+<span class="comment">// and is interpreted as</span>
+<span class="key">category</span> {
+    <span class="key">sub1</span> { <span class="key">key1</span> <span class="string">"val1"</span> <span class="key">key2</span> <span class="string">"val2"</span> }
+    <span class="key">sub2</span> { <span class="key">key1</span> <span class="string">"val1"</span> <span class="key">key2</span> <span class="string">"val2"</span> }
+    <span class="key">key</span> <span class="string">"val"</span>
+}
+</code></pre>
+
+        <h2>Dotted paths</h2>
+        <p>
+            Maps and arrays may contain values of any type, including other maps and arrays. For any value,
+            it is possible to write a path to it - a sequence of map keys and array indices. NDL semantics
+            allows to unambiguously represent a path to any value as a string, constructed as follows:
+        </p>
+        <ul>
+            <li>Start with an empty string and iterate over the path elements from the root to the value</li>
+            <li>If current path element is a map, append a dot followed by the key name, following key
+                representation rules (see above)</li>
+            <li>If current path element is an array, append a dot followed by the 0-based index</li>
+            <li>A dot at the beginning of the path is omitted</li>
+        </ul>
+        <pre><code><span class="key">category</span> { <span class="key">array</span> [ { <span class="key">'weird key'</span> <span class="string">"val"</span> } ] }
+<span class="comment">// a path to the value "val" here can be
+// represented as category.array.0.'weird key'</span>
+</code></pre>
+        <p>
+            This is a convenient way to refer to a value by its path, and is recommended to implement by
+            libraries. Though, you can't write dotted paths with array indices in NDL code itself, due to
+            ambiguity problems it would cause.
+        </p>
+
+        <h2>Why another standard</h2>
+        <p>
+            You probably thought of the <a href="https://imgs.xkcd.com/comics/standards_2x.png">
+            "how standards proliferate"</a> meme. Well, no existing standard covered the needs of
+            OpenWallpaper's declarative scene frontend I'm planning to develop. I tried to avoid making
+            a new standard, but was left with no choice.
+        </p>
+        <ul>
+            <li>
+                JSON - good language for data exchange, but hard to edit by hand because of unnecessary
+                verbosity (commas and colons), does not differentiate int and real numbers
+            </li>
+            <li>
+                YAML - <a href="https://ruuda.nl/2023/the-yaml-document-from-hell">over-engineered
+                and full of footguns</a>, mainly because it allows for unquoted strings that can be
+                interpreted in an unintended way
+            </li>
+            <li>
+                TOML - awesome for flat configs, but gains about the same verbosity as JSON at deep
+                nesting levels
+            </li>
+            <li>
+                KDL - shares the idea of minimal syntax, but represents an XML-like tree instead of a
+                structure
+            </li>
+            <li>
+                HCL and HOCON - advanced config languages with programming elements, that are probably
+                overkill for many use cases
+            </li>
+        </ul>
+    </main>
+</body>
+</html>
+
