@@ -115,13 +115,12 @@
         <p>
             A key in the map may be written as dot-separated path, e.g. <code class="inline-code">k1.k2.kN</code>.
             In this case, nested maps are created for each path level, e.g. <code class="inline-code">k1 {}</code>,
-            <code class="inline-code">k1 { k2 {} }</code>, etc. Let's call declarations of all the nested keys
-            except the last one <i>implicit declarations</i>, and the last one - <i>explicit declaration</i>.
+            <code class="inline-code">k1 { k2 {} }</code>, etc.
         </p>
         <p>
-            There must be at most one explicit declaration of any key. If a key has implicit declarations, its value
-            type must be a map. If a map has implicit declarations, their contents and explicit declaration contents
-            are merged into a single map.
+            After expanding dotted paths, maps at the same path are merged recursively. If multiple map values
+            have the same path, they are merged. Map/non-map and non-map/non-map conflicts are invalid (NDL does
+            not allow value overriding).
         </p>
         <pre><code><span class="comment">// speaking less formally, this is allowed</span>
 <span class="key">category.sub1</span> { <span class="key">key1</span> <span class="string">"val1"</span> <span class="key">key2</span> <span class="string">"val2"</span> }
