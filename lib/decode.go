@@ -228,9 +228,9 @@ func primitiveValueFromAST(node astNode) (Value, error) {
 		return Value{kind: KindBool, primValue: node.Token.Raw}, err
 
 	case *nullNode:
-		return Value{kind: KindNull}, nil
-	default:
+		return Value{kind: KindNull, primValue: "null"}, nil
 
+	default:
 		return Value{}, makeError(node.GetSpan(), "invalid value")
 	}
 }

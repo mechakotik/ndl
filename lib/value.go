@@ -9,7 +9,6 @@ import (
 	"math/big"
 	"strconv"
 	"strings"
-	"unicode"
 	"unicode/utf8"
 )
 
@@ -210,23 +209,20 @@ type StringFormat struct {
 	// string does not contain `.
 	PreferRaw bool
 
-	// Escape non-printable characters in interpreted strings. Newline and
-	// tab are escaped as \n and \t, and other control runes are escaped
+	// Don't escape non-printable characters in interpreted strings. Newline
+	// and tab are escaped as \n and \t, and other control runes are escaped
 	// as \u{...}. Ignored in raw strings.
-	EscapeNonPrintable bool
+	KeepNonPrintable bool
 
-	// Escape non-ASCII characters in interpreted strings as \u{...}.
+	// Don't escape non-ASCII characters in interpreted strings as \u{...}.
 	// Ignored in raw strings.
-	EscapeNonASCII bool
+	KeepNonASCII bool
 }
 
 // NewString creates a string Value from str with default formatting options.
 // Returns an error if str is not valid UTF-8 string.
 func NewString(str string) (Value, error) {
-	return NewStringWithFormat(str, StringFormat{
-		EscapeNonPrintable: true,
-		EscapeNonASCII:     true,
-	})
+	return NewStringWithFormat(str, StringFormat{})
 }
 
 // NewStringWithFormat creates a string Value from str with custom formatting
@@ -239,31 +235,7 @@ func NewStringWithFormat(str string, format StringFormat) (Value, error) {
 		return Value{kind: KindString, primValue: "`" + str + "`"}, nil
 	}
 
-	builder := strings.Builder{}
-	builder.Grow(len(str) + 2)
-	builder.WriteByte('"')
-
-	for _, r := range str {
-		switch {
-		case r == '"':
-			builder.WriteString(`\"`)
-		case r == '\\':
-			builder.WriteString(`\\`)
-		case format.EscapeNonPrintable && r == '\n':
-			builder.WriteString(`\n`)
-		case format.EscapeNonPrintable && r == '\t':
-			builder.WriteString(`\t`)
-		case format.EscapeNonPrintable && !unicode.IsPrint(r):
-			fmt.Fprintf(&builder, `\u{%X}`, r)
-		case format.EscapeNonASCII && r > 0x7f:
-			fmt.Fprintf(&builder, `\u{%X}`, r)
-		default:
-			builder.WriteRune(r)
-		}
-	}
-
-	builder.WriteByte('"')
-	return Value{kind: KindString, primValue: builder.String()}, nil
+	return Value{kind: KindString, primValue: encodeInterpretedString(str, '"', format)}, nil
 }
 
 // IntNotation controls how int values are represented in NDL document.

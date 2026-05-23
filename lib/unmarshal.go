@@ -3,18 +3,15 @@ package ndl
 import (
 	"fmt"
 	"reflect"
-	"strings"
 )
-
-var valueType = reflect.TypeOf(Value{})
 
 // Unmarshal parses an NDL document and stores the result in the value pointed to by
 // out. Out must be a non-nil pointer.
 //
 // NDL maps unmarshal into structs, maps with string keys, interfaces, or Value.
 // Struct fields are matched by exported field name or by the name in an ndl tag,
-// fields tagged with ndl:"-" are ignored. NDL arrays unmarshal into slices,
-// arrays, interfaces, or Value.
+// and fields with the skip tag option are ignored. NDL arrays unmarshal into
+// slices, arrays, interfaces, or Value.
 //
 // NDL strings unmarshal into string, ints into signed or unsigned integer types,
 // reals into float32 or float64, bools into bool, and null into the zero value of
@@ -23,7 +20,7 @@ var valueType = reflect.TypeOf(Value{})
 //
 // Interface destinations receive map[string]any for maps, []any for arrays, string
 // for strings, int64 for ints, float64 for reals, bool for bools, and nil for null.
-func Unmarshal(data []byte, out any) error {
+func Unmarshal(doc string, out any) error {
 	if out == nil {
 		return fmt.Errorf("called Unmarshal on nil")
 	}
@@ -33,7 +30,7 @@ func Unmarshal(data []byte, out any) error {
 		return fmt.Errorf("called Unmarshal on non-pointer out value")
 	}
 
-	value, err := Decode(string(data))
+	value, err := Decode(doc)
 	if err != nil {
 		return err
 	}
@@ -81,6 +78,18 @@ func unmarshalValue(value Value, dst reflect.Value) error {
 
 	if value.kind == KindNull {
 		dst.SetZero()
+		return nil
+	}
+
+	if dst.Type() == bigIntType {
+		if value.kind != KindInt {
+			return typeError(value, dst)
+		}
+		n, err := value.BigInt()
+		if err != nil {
+			return err
+		}
+		dst.Set(reflect.ValueOf(*n))
 		return nil
 	}
 
@@ -167,7 +176,10 @@ func unmarshalStruct(value Value, dst reflect.Value) error {
 		return typeError(value, dst)
 	}
 
-	fields := structFields(dst.Type())
+	fields, err := structFields(dst.Type())
+	if err != nil {
+		return err
+	}
 	for _, pair := range value.mapValuePairs {
 		fieldIdx, ok := fields[pair.Key]
 		if !ok {
@@ -180,7 +192,7 @@ func unmarshalStruct(value Value, dst reflect.Value) error {
 	return nil
 }
 
-func structFields(typ reflect.Type) map[string]int {
+func structFields(typ reflect.Type) (map[string]int, error) {
 	fields := map[string]int{}
 	for idx := 0; idx < typ.NumField(); idx++ {
 		field := typ.Field(idx)
@@ -188,21 +200,19 @@ func structFields(typ reflect.Type) map[string]int {
 			continue
 		}
 
-		name := field.Name
-		tag := field.Tag.Get("ndl")
-		if tag == "-" {
+		name, opts, err := parseFieldTag(field.Tag.Get("ndl"))
+		if err != nil {
+			return nil, err
+		}
+		if opts.skip {
 			continue
 		}
-		if tagName, _, ok := strings.Cut(tag, ","); ok {
-			if tagName != "" {
-				name = tagName
-			}
-		} else if tag != "" {
-			name = tag
+		if name == "" {
+			name = field.Name
 		}
 		fields[name] = idx
 	}
-	return fields
+	return fields, nil
 }
 
 func unmarshalMap(value Value, dst reflect.Value) error {
