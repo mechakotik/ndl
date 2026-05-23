@@ -99,8 +99,10 @@
                         <code class="inline-code"><span class="value">01.2</span></code>)</li>
                     <li>in e notation, fully matching <code class="inline-code">-?(0|[1-9][0-9]*)(\.[0-9]+)?[eE]-?[0-9]+</code>
                         (e.g. <code class="inline-code"><span class="value">1.2e-3</span></code>,
-                        <code class="inline-code"><span class="value">1e-9</span></code>)</li>
-                    <li>inf, -inf, nan (-nan is invalid)</li>
+                        <code class="inline-code"><span class="value">-1e9</span></code>)</li>
+                    <li><code class="inline-code"><span class="value">inf</span></code>,
+                        <code class="inline-code"><span class="value">-inf</span></code>,
+                        <code class="inline-code"><span class="value">nan</span></code> (negative nan is invalid)</li>
                 </ul>
             </li>
             <li>bool - <code class="inline-code"><span class="bool">true</span></code> or <code class="inline-code">
@@ -108,17 +110,17 @@
             <li>null type - <code class="inline-code"><span class="bool">null</span></code></li>
         </ul>
         <p>
-            Document contains exactly one value of any type. If a type is a map, <code class="inline-code">{}</code>
+            Document contains exactly one value of any type. If this type is map, <code class="inline-code">{}</code>
             brackets must be omitted. Empty (or comment-only) document is an empty map. NDL document file extension
             is <code class="inline-code">.ndl</code>.
         </p>
         <p>
             A key in the map may be written as dot-separated path, e.g. <code class="inline-code">k1.k2.kN</code>.
             In this case, nested maps are created for each path level, e.g. <code class="inline-code">k1 {}</code>,
-            <code class="inline-code">k1 { k2 {} }</code>, etc.
+            <code class="inline-code">k1 { k2 {} }</code>, etc. No whitespace is allowed between path parts and dots.
         </p>
         <p>
-            After expanding dotted paths, maps at the same path are merged recursively. If multiple map values
+            After expanding key paths, maps at the same path are merged recursively. If multiple map values
             have the same path, they are merged. Map/non-map and non-map/non-map conflicts are invalid (NDL does
             not allow value overriding).
         </p>
@@ -158,6 +160,36 @@
             ambiguity problems it would cause.
         </p>
 
+        <h2>Canonical format</h2>
+        <p>
+            It is recommended to format NDL documents as follows:
+        </p>
+        <ul>
+            <li>All tokens must be separated by either one ASCII space or line break followed by
+                indentation tabs (except <code class="inline-code">[]</code> and
+                <code class="inline-code">{}</code>, which are written without whitespace).</li>
+            <li>If array or map contains no nested arrays, maps, comments, multiline strings, and
+                its length (number of Unicode characters in canonical inline format) does not exceed
+                60 characters, it is written on a single line</li>
+            <li>Root map is always written on multiple lines</li>
+            <li>In other cases, it is written on multiple lines, adding one level of tab indentation.
+                In maps, each key-value pair is written on a separate line, separated by one ASCII
+                space, in arrays, each element is written on a separate line. A line break is written
+                after the opening brace/bracket and before closing brace/bracket</li>
+            <li>Multiline arrays whose direct elements are only maps are written in one indentation
+                level instead of two, and braces are separated by one ASCII space: 
+                <code class="inline-code">[ {</code>, <code class="inline-code">} {</code>, 
+                <code class="inline-code">} ]</code> (this overrides previous rule on line break after
+                opening bracket)</li>
+            <li>In multiline arrays and maps, existing line breaks are preserved, but if there are
+                two and more consecutive empty lines, they are collapsed into one. Empty lines after
+                opening brace/bracket and before closing brace/bracked are also removed</li>
+            <li>Line comments are written with one ASCII space after <code class="inline-code">//</code></li>
+            <li>Block comments are written with either one ASCII space after <code class="inline-code">/*</code>
+                and before <code class="inline-code">*/</code>, if there is no user-written line break
+                there</li>
+        </ul>
+
         <h2>Why another standard</h2>
         <p>
             You probably thought of the <a href="https://imgs.xkcd.com/comics/standards_2x.png">
@@ -184,7 +216,7 @@
                 structure
             </li>
             <li>
-                HCL and HOCON - advanced config languages with programming elements, that are probably
+                HCL, HOCON, UCL - advanced config languages with programming elements, that are probably
                 overkill for many use cases
             </li>
         </ul>
