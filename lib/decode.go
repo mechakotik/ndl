@@ -39,12 +39,6 @@ func Decode(doc string) (Value, error) {
 	return value, nil
 }
 
-type pathElement struct {
-	Key   string
-	Index int
-	Span  Span
-}
-
 func valueFromAST(node astNode) (Value, error) {
 	switch node := node.(type) {
 	case *mapNode:
