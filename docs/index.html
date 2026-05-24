@@ -32,6 +32,7 @@
 </code></pre>
 
         <h2>Design principles</h2>
+        <p>Goals:</p>
         <ul>
             <li>Minimal syntax, no elements that can be removed without changing semantics</li>
             <li>Sane set of primitive types, that maps well to common programming languages</li>
@@ -40,6 +41,13 @@
             <li>Keep documents with deep nesting levels well readable and editable by hand</li>
             <li>Unambiguous representation of paths to values, that allows for easy access
                 to arbitrary data</li>
+        </ul>
+        <p>Non-goals:</p>
+        <ul>
+            <li>Fastest possible wire format - if performance is a bottleneck, use something like
+                <a href="https://protobuf.dev/">protobuf</a> instead</li>
+            <li>Programmable config language - instead NDL has minimal set of features for convenient
+                static config</li>
         </ul>
 
         <h2>Specification</h2>
