@@ -52,18 +52,18 @@ func (v Value) ByPath(path string) (Value, error) {
 	}
 
 	for _, elem := range elements {
-		if elem.Index >= 0 {
-			if v.kind != KindArray || elem.Index >= len(v.arrayValue) {
+		if elem.index >= 0 {
+			if v.kind != KindArray || elem.index >= len(v.arrayValue) {
 				return NewNull(), nil
 			}
-			v = v.arrayValue[elem.Index]
+			v = v.arrayValue[elem.index]
 			continue
 		}
 
 		if v.kind != KindMap {
 			return NewNull(), nil
 		}
-		child, ok := v.mapValue[elem.Key]
+		child, ok := v.mapValue[elem.key]
 		if !ok {
 			return NewNull(), nil
 		}
@@ -74,9 +74,9 @@ func (v Value) ByPath(path string) (Value, error) {
 }
 
 type pathElement struct {
-	Key   string
-	Index int
-	Span  Span
+	key   string
+	index int
+	span  Span
 }
 
 func parseValuePath(path string) ([]pathElement, error) {
@@ -110,7 +110,7 @@ func parseValuePath(path string) ([]pathElement, error) {
 func parseValuePathElement(path string, pos int) (pathElement, int, error) {
 	if path[pos] == '\'' {
 		key, next, err := parseQuotedPathKey(path, pos)
-		return pathElement{Key: key, Index: -1}, next, err
+		return pathElement{key: key, index: -1}, next, err
 	}
 
 	start := pos
@@ -123,19 +123,19 @@ func parseValuePathElement(path string, pos int) (pathElement, int, error) {
 	}
 
 	if decimalIntLiteralRe.MatchString(raw) {
+		if raw[0] == '-' {
+			return pathElement{}, 0, pathError(start, "negative array index %s", raw)
+		}
 		index, err := strconv.Atoi(raw)
 		if err != nil {
 			return pathElement{}, 0, pathError(start, "invalid array index %s", raw)
 		}
-		if index < 0 {
-			return pathElement{}, 0, pathError(start, "negative array index %s", raw)
-		}
-		return pathElement{Index: index}, pos, nil
+		return pathElement{index: index}, pos, nil
 	}
 	if !isBareKey(raw) {
 		return pathElement{}, 0, pathError(start, "invalid path element %s", raw)
 	}
-	return pathElement{Key: raw, Index: -1}, pos, nil
+	return pathElement{key: raw, index: -1}, pos, nil
 }
 
 func parseQuotedPathKey(path string, pos int) (string, int, error) {

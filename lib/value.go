@@ -398,14 +398,33 @@ func NewFloatWithFormat(x float64, format RealFormat) Value {
 	}
 
 	if expIndex := strings.LastIndexByte(raw, 'e'); expIndex != -1 {
-		if raw[expIndex+1] == '+' {
-			raw = raw[:expIndex+1] + raw[expIndex+2:]
-		}
+		raw = raw[:expIndex+1] + normalizeRealExponent(raw[expIndex+1:])
 	} else if !strings.Contains(raw, ".") {
 		raw += ".0"
 	}
 
 	return Value{kind: KindReal, primValue: raw}
+}
+
+func normalizeRealExponent(exp string) string {
+	negative := false
+	if strings.HasPrefix(exp, "+") {
+		exp = exp[1:]
+	} else if strings.HasPrefix(exp, "-") {
+		negative = true
+		exp = exp[1:]
+	}
+
+	for len(exp) > 1 && exp[0] == '0' {
+		exp = exp[1:]
+	}
+	if exp == "0" {
+		negative = false
+	}
+	if negative {
+		return "-" + exp
+	}
+	return exp
 }
 
 // NewBool creates a bool Value from b.

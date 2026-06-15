@@ -118,13 +118,15 @@ func (p *astParser) addError(span Span, format string, args ...any) {
 	p.Errs.Add(makeError(span, format, args...))
 }
 
-func (p *astParser) skipTrivia() {
+func (p *astParser) skipTrivia() bool {
+	consumed := false
 	for {
 		switch p.peek().Type {
 		case tokenWhitespace, tokenLineComment, tokenBlockComment:
 			p.next()
+			consumed = true
 		default:
-			return
+			return consumed
 		}
 	}
 }
@@ -175,8 +177,9 @@ func (p *astParser) parseMap(isRoot bool) astNode {
 		}
 	}
 
+	needSeparator := false
 	for {
-		p.skipTrivia()
+		hadSeparator := p.skipTrivia()
 		tok := p.peek()
 		if tok.Type != tokenEOF {
 			span.End = tok.Span.End
@@ -192,6 +195,9 @@ func (p *astParser) parseMap(isRoot bool) astNode {
 			p.next()
 			break
 		}
+		if needSeparator && !hadSeparator {
+			p.addError(tok.Span, "expected separator")
+		}
 
 		keyPathOrInvalid := p.parseKeyPath()
 		keyPath, ok := keyPathOrInvalid.(*keyPathNode)
@@ -199,6 +205,10 @@ func (p *astParser) parseMap(isRoot bool) astNode {
 			break
 		}
 		span.End = keyPath.Span.End
+
+		if !p.skipTrivia() {
+			p.addError(p.peek().Span, "expected separator")
+		}
 
 		valueOrInvalid := p.parseValue()
 		value, ok := valueOrInvalid.(valueNode)
@@ -215,6 +225,7 @@ func (p *astParser) parseMap(isRoot bool) astNode {
 				End:   value.GetSpan().End,
 			},
 		})
+		needSeparator = true
 	}
 
 	return &mapNode{
@@ -233,8 +244,9 @@ func (p *astParser) parseArray() astNode {
 		p.addError(lbracket.Span, "expected [, got %s", lbracket.Raw)
 	}
 
+	needSeparator := false
 	for {
-		p.skipTrivia()
+		hadSeparator := p.skipTrivia()
 		if p.peek().Type == tokenRBracket {
 			span.End = p.next().Span.End
 			break
@@ -247,6 +259,9 @@ func (p *astParser) parseArray() astNode {
 			p.addError(p.peek().Span, "unterminated array, expected ], found }")
 			break
 		}
+		if needSeparator && !hadSeparator {
+			p.addError(p.peek().Span, "expected separator")
+		}
 
 		valueOrInvalid := p.parseValue()
 		value, ok := valueOrInvalid.(valueNode)
@@ -256,6 +271,7 @@ func (p *astParser) parseArray() astNode {
 		}
 
 		values = append(values, value)
+		needSeparator = true
 	}
 
 	return &arrayNode{

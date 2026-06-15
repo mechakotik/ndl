@@ -10,6 +10,9 @@ func Format(doc string) (string, error) {
 	if err != nil {
 		return doc, err
 	}
+	if _, err := makeAST(tokens); err != nil && !isRecoverableFormatError(err) {
+		return doc, err
+	}
 
 	formatter := newFormatter(tokens)
 	return formatter.formatDocument(), nil
@@ -38,6 +41,27 @@ type formatted struct {
 	open            string
 	close           string
 	blankLineBefore bool
+}
+
+func isRecoverableFormatError(err error) bool {
+	switch err := err.(type) {
+	case ErrorList:
+		if len(err) == 0 {
+			return true
+		}
+		for _, nested := range err {
+			if !isRecoverableFormatError(nested) {
+				return false
+			}
+		}
+		return true
+
+	case *Error:
+		return err != nil && err.Message == "expected separator" && (err.Err == nil || isRecoverableFormatError(err.Err))
+
+	default:
+		return false
+	}
 }
 
 func newFormatter(tokens []token) *formatter {

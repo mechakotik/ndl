@@ -1,5 +1,7 @@
 package ndl
 
+import "unicode/utf8"
+
 type tokenType int
 
 const (
@@ -45,6 +47,10 @@ type token struct {
 }
 
 func tokenize(doc string) ([]token, error) {
+	if !utf8.ValidString(doc) {
+		return nil, makeError(Span{}, "invalid UTF-8 document")
+	}
+
 	tokens := []token{}
 	sc := newScanner(doc)
 

@@ -14,7 +14,7 @@ var (
 	binaryIntLiteralRe  = regexp.MustCompile(`^-?0b[01]+$`)
 
 	dotRealLiteralRe = regexp.MustCompile(`^-?(0|[1-9][0-9]*)\.[0-9]+$`)
-	eRealLiteralRe   = regexp.MustCompile(`^-?(0|[1-9][0-9]*)(\.[0-9]+)?[eE]-?[0-9]+$`)
+	eRealLiteralRe   = regexp.MustCompile(`^-?(0|[1-9][0-9]*)(\.[0-9]+)?[eE]-?(0|[1-9][0-9]*)$`)
 )
 
 // Decode parses an NDL document from string into a Value. Returns an error if any kind
@@ -99,9 +99,9 @@ func decodeKeyPath(node keyPathNode) ([]pathElement, error) {
 			continue
 		}
 		path = append(path, pathElement{
-			Key:   key,
-			Index: -1,
-			Span:  tok.Span,
+			key:   key,
+			index: -1,
+			span:  tok.Span,
 		})
 	}
 
@@ -134,22 +134,22 @@ func insertValueAtPath(value *Value, path []pathElement, child Value) error {
 
 	elem := path[0]
 	if len(path) == 1 {
-		return mergeMapEntry(value, elem.Key, child, elem.Span)
+		return mergeMapEntry(value, elem.key, child, elem.span)
 	}
 
-	existing, ok := value.mapValue[elem.Key]
+	existing, ok := value.mapValue[elem.key]
 	if !ok {
 		existing = newMapValue()
-		value.mapValue[elem.Key] = existing
-		value.mapValuePairs = append(value.mapValuePairs, Pair{Key: elem.Key})
+		value.mapValue[elem.key] = existing
+		value.mapValuePairs = append(value.mapValuePairs, Pair{Key: elem.key})
 	} else if existing.kind != KindMap {
-		return makeError(elem.Span, "key %s redeclared as map", elem.Key)
+		return makeError(elem.span, "key %s redeclared as map", elem.key)
 	}
 
 	if err := insertValueAtPath(&existing, path[1:], child); err != nil {
 		return err
 	}
-	value.mapValue[elem.Key] = existing
+	value.mapValue[elem.key] = existing
 	return nil
 }
 
@@ -339,6 +339,9 @@ func decodeUnicodeEscape(content string, start int) (rune, int, error) {
 	}
 	if hexEnd == hexStart {
 		return 0, 0, fmt.Errorf("expected hex digit")
+	}
+	if hexEnd-hexStart > 6 {
+		return 0, 0, fmt.Errorf("too many hex digits")
 	}
 
 	codepoint, err := strconv.ParseInt(content[hexStart:hexEnd], 16, 32)
