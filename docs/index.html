@@ -52,15 +52,16 @@
 
         <h2>Specification</h2>
         <p>
-            Keys are arbitrary strings, that are represented either:
+            Keys are arbitrary strings, that may be represented either:
         </p>
         <ul>
-            <li>as is, if the key fully matches <code class="inline-code">[a-zA-Z_][a-zA-Z0-9_-]*</code>
-                and is not one of reserved keywords <code class="inline-code">null</code>,
-                <code class="inline-code">true</code>, <code class="inline-code">false</code>,
-                <code class="inline-code">inf</code>, <code class="inline-code">nan</code></li>
-            <li>in single quotes <code class="inline-code">''</code> in any other case, the contents
-                of a quoted key use the same escape rules as interpreted string values (see below)</li>
+            <li>as is, if the key consists only of <code class="inline-code">a-z|A-Z|_|0-9|-</code>,
+                begins with <code class="inline-code">a-z|A-Z|_</code>, and is not one of reserved keywords
+                <code class="inline-code">null</code>, <code class="inline-code">true</code>,
+                <code class="inline-code">false</code>, <code class="inline-code">inf</code>,
+                <code class="inline-code">nan</code></li>
+            <li>in single quotes <code class="inline-code">''</code>, the contents of a quoted key use
+                the same escape rules as interpreted string values (see below)</li>
         </ul>
         <p>
             There are following types of values:
@@ -89,25 +90,25 @@
             </li>
             <li>int - arbitrary size integer, written in either:
                 <ul>
-                    <li>decimal format, fully matching <code class="inline-code">-?(0|[1-9][0-9]*)</code>
-                        (e.g. <code class="inline-code"><span class="value">12</span></code>,
+                    <li>decimal format without leading zeroes, e.g. <code class="inline-code"><span class="value">12</span></code>,
+                        <code class="inline-code"><span class="value">-3</span></code>,
                         <code class="inline-code"><span class="value">0</span></code>, but not
-                        <code class="inline-code"><span class="value">01</span></code>)</li>
-                    <li>hexadecimal format, fully matching <code class="inline-code">-?0x[0-9A-Fa-f]+</code>
-                        (e.g. <code class="inline-code"><span class="value">0xFF</span></code>)</li>
-                    <li>binary format, fully matching <code class="inline-code">-?0b[01]+</code>
-                        (e.g. <code class="inline-code"><span class="value">0b1011</span></code>)</li>
+                        <code class="inline-code"><span class="value">01</span></code></li>
+                    <li>hexadecimal format, e.g. <code class="inline-code"><span class="value">0xFFFF</span></code>,
+                        <code class="inline-code"><span class="value">-0x08</span></code></li>
+                    <li>binary format, e.g. <code class="inline-code"><span class="value">0b1011</span></code>,
+                        <code class="inline-code"><span class="value">-0b010</span></code></li>
                 </ul>
             </li>
             <li>real - real number, either:
                 <ul>
-                    <li>decimal dot real, fully matching <code class="inline-code">-?(0|[1-9][0-9]*)\.[0-9]+</code>
-                        (e.g. <code class="inline-code"><span class="value">12.3</span></code>,
-                         <code class="inline-code"><span class="value">-0.1</span></code>, but not
-                        <code class="inline-code"><span class="value">01.2</span></code>)</li>
-                    <li>in e notation, fully matching <code class="inline-code">-?(0|[1-9][0-9]*)(\.[0-9]+)?[eE]-?[0-9]+</code>
-                        (e.g. <code class="inline-code"><span class="value">1.2e-3</span></code>,
-                        <code class="inline-code"><span class="value">-1e9</span></code>)</li>
+                    <li>decimal dot real without leading zeroes, e.g.
+                        <code class="inline-code"><span class="value">12.3</span></code>,
+                        <code class="inline-code"><span class="value">-0.1</span></code>, but not
+                        <code class="inline-code"><span class="value">01.2</span></code></li>
+                    <li>in scientific notation without leading zeroes, e.g.
+                        <code class="inline-code"><span class="value">1.2e-3</span></code>,
+                        <code class="inline-code"><span class="value">-1e9</span></code></li>
                     <li><code class="inline-code"><span class="value">inf</span></code>,
                         <code class="inline-code"><span class="value">-inf</span></code>,
                         <code class="inline-code"><span class="value">nan</span></code> (negative nan is invalid)</li>
@@ -118,15 +119,63 @@
             <li>null type - <code class="inline-code"><span class="bool">null</span></code></li>
         </ul>
         <p>
-            Document contains exactly one value of any type. If this type is map, <code class="inline-code">{}</code>
-            brackets must be omitted. Empty (or comment-only) document is an empty map. NDL document file extension
-            is <code class="inline-code">.ndl</code>.
+            NDL document is a valid UTF-8 text containing exactly one value of any type. If this type is map,
+            <code class="inline-code">{}</code> brackets must be omitted. Empty (or comment-only) document is an
+            empty map. NDL document file extension is <code class="inline-code">.ndl</code>.
         </p>
         <p>
             A key in the map may be written as dot-separated path, e.g. <code class="inline-code">k1.k2.kN</code>.
             In this case, nested maps are created for each path level, e.g. <code class="inline-code">k1 {}</code>,
             <code class="inline-code">k1 { k2 {} }</code>, etc. No whitespace is allowed between path parts and dots.
         </p>
+
+        <details>
+            <summary>Formal grammar</summary>
+            <pre><code>document = trivia (pairs | array | primitive)? trivia eof
+value = map | array | primitive
+primitive = string | real | int | bool | null
+
+map = '{' trivia pairs? trivia '}'
+array = '[' trivia (value (separator value)*)? trivia ']'
+pairs = pair (separator pair)*
+pair = key_path separator value
+
+key_path = key ('.' key)*
+key = unquoted_key | quoted_key
+unquoted_key = [a-zA-Z_][a-zA-Z0-9_-]* and not reserved_keyword
+reserved_keyword = 'null' | 'true' | 'false' | 'inf' | 'nan'
+
+string = raw_string | interpreted_string
+raw_string = '`' raw_char* '`'
+interpreted_string = '"' interpreted_char('"')* '"'
+quoted_key = '\'' interpreted_char('\'')* '\''
+raw_char = any character except '`'
+interpreted_char(quote) = escape | any character except '\\' and quote
+escape = '\\n' | '\\t' | '\\'' | '\\\"' | '\\\\' | unicode_escape
+unicode_escape = '\\u{' hex_digit{1,6} '}'
+
+int = decimal | hexadecimal | binary
+decimal = -?(0|[1-9][0-9]*)
+hexadecimal = -?0x[0-9A-Fa-f]+
+binary = -?0b[01]+
+
+real = decimal_dot | scientific | 'inf' | '-inf' | 'nan'
+decimal_dot = -?(0|[1-9][0-9]*)\.[0-9]+
+scientific = -?(0|[1-9][0-9]*)(\.[0-9]+)?[eE]-?(0|[1-9][0-9]*)
+
+bool = 'true' | 'false'
+null = 'null'
+
+separator = (whitespace | comment)+
+trivia = (whitespace | comment)*
+comment = line_comment | block_comment
+whitespace = (' ' | '\t' | line_break)+
+line_comment = '//' (any character except line_break)*
+line_break = '\r\n' | '\n' | '\r'
+block_comment = '/*' (block_comment | any character not forming '/*' and '*/')* '*/'
+</code></pre>
+        </details>
+
         <p>
             After expanding key paths, maps at the same path are merged recursively. If multiple map values
             have the same path, they are merged. Map/non-map and non-map/non-map conflicts are invalid (NDL does
@@ -168,17 +217,21 @@
             ambiguity problems it would cause.
         </p>
 
-        <h2>Canonical format</h2>
+        <h2>Style guide</h2>
         <p>
             It is recommended to format NDL documents as follows:
         </p>
         <ul>
             <li>All tokens must be separated by either one ASCII space or line break followed by
-                indentation tabs (except <code class="inline-code">[]</code> and
-                <code class="inline-code">{}</code>, which are written without whitespace).</li>
+                indentation tabs, except:
+            <ul>
+                <li><code class="inline-code">[]</code> and <code class="inline-code">{}</code>,
+                    which are written without whitespace</li>
+                <li>key path parts, which cannot be written with whitespace by language rules</li>
+            </ul></li>
             <li>If array or map contains no nested arrays, maps, comments, multiline strings, and
-                its length (number of Unicode characters in canonical inline format) does not exceed
-                60 characters, it is written on a single line</li>
+                its length (number of Unicode scalar values in inline representation, excluding
+                leading indentation) does not exceed 60 characters, it is written on a single line</li>
             <li>Root map is always written on multiple lines</li>
             <li>In other cases, it is written on multiple lines, adding one level of tab indentation.
                 In maps, each key-value pair is written on a separate line, separated by one ASCII
@@ -191,19 +244,23 @@
                 opening bracket)</li>
             <li>In multiline arrays and maps, existing line breaks are preserved, but if there are
                 two and more consecutive empty lines, they are collapsed into one. Empty lines after
-                opening brace/bracket and before closing brace/bracked are also removed</li>
+                opening brace/bracket and before closing brace/bracket are also removed</li>
             <li>Line comments are written with one ASCII space after <code class="inline-code">//</code></li>
             <li>Block comments are written with either one ASCII space after <code class="inline-code">/*</code>
                 and before <code class="inline-code">*/</code>, if there is no user-written line break
                 there</li>
         </ul>
+        <p>
+            Note that style guide is not part of language specification, and therefore can be changed
+            without bumping standard version.
+        </p>
 
         <h2>Why another standard</h2>
         <p>
-            You probably thought of the <a href="https://imgs.xkcd.com/comics/standards_2x.png">
-            "how standards proliferate"</a> meme. Well, no existing standard covered the needs of
-            OpenWallpaper's declarative scene frontend I'm planning to develop. I tried to avoid making
-            a new standard, but was left with no choice.
+            You may have thought of the <a href="https://imgs.xkcd.com/comics/standards_2x.png">
+            "how standards proliferate"</a> meme. While there are many existing standards that
+            do similar thing, NDL may work better for several use cases. Here's how it compares to
+            existing popular languages:
         </p>
         <ul>
             <li>
@@ -228,6 +285,11 @@
                 overkill for many use cases
             </li>
         </ul>
+        <p>
+            After all, having more alternatives is never a bad thing. You aren't forced to use the
+            new alternative - you choose it yourself when fits your needs better. If it doesn't, you
+            don't use it, and its plain existence doesn't make worse.
+        </p>
     </main>
 </body>
 </html>
